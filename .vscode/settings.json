@@ -1,12 +1,24 @@
 {
     "cSpell.words": [
+        "CGNAT",
         "curlimages",
         "dnsmasq",
+        "dnssec",
+        "edns",
         "FTLCONF",
         "lovelaze",
         "MAXDBDAYS",
+        "minimisation",
         "mvance",
+        "nodefault",
+        "nsec",
+        "nxdomain",
         "PIHOLE",
+        "qname",
+        "rcvbuf",
+        "reuseport",
+        "rrset",
+        "sndbuf",
         "WEBPASSWORD"
     ]
 }

@@ -1,22 +1,15 @@
 ---
-version: "3.9"
-
-x-common-env: &common-env
-  TZ: "Australia/Sydney"
-  WEBPASSWORD: "${WEBPASSWORD}"           # set per-host in Portainer
-  DNSMASQ_LISTENING: "all"
-  FTLCONF_LOCAL_IPV4: "${HOST_IP}"        # set per-host in Portainer
-  FTLCONF_MAXDBDAYS: "7"                  # keep gravity DB small on Pi 3
-
 services:
   unbound:
     image: mvance/unbound:latest
     container_name: unbound
     network_mode: host
     restart: unless-stopped
+    # These files come from your Git repo checkout on the agent
     volumes:
       - ./unbound/unbound.conf:/opt/unbound/unbound.conf:ro
       - ./unbound/root.hints:/opt/unbound/root.hints:ro
+    # Optional sanity check; you can remove if you prefer
     healthcheck:
       test: ["CMD", "drill", "cloudflare.com", "@127.0.0.1", "-p", "5335"]
       interval: 30s
@@ -29,16 +22,40 @@ services:
     network_mode: host
     restart: unless-stopped
     environment:
-      <<: *common-env
-      # Pi-hole sends all queries to THIS host's Unbound on 5335
-      PIHOLE_DNS_: "${HOST_IP}#5335"
+      TZ: "Australia/Sydney"
+
+      # v6 web password (use secrets if you like)
+      # (old WEBPASSWORD is no longer the recommended knob)
+      FTLCONF_webserver_api_password: "${ADMIN_PASSWORD}"
+
+      # Upstream(s) — send to THIS host’s Unbound on 5335
+      # Semicolon-separated list is allowed if you add more later
+      FTLCONF_dns_upstreams: "${HOST_IP}#5335"
+
+      # Listen on all interfaces (v6 naming)
+      FTLCONF_dns_listeningMode: "all"
+
+      # Ensure 'pi.hole' (and host reply) maps to the LAN IP of the host
+      FTLCONF_dns_reply_host_IPv4: "${HOST_IP}"
+      FTLCONF_dns_reply_host_force4: "true"
+
+      # Keep FTL DB small on Pi 3
+      FTLCONF_database_maxDBdays: "7"
+
+      # Only enable this if you actually mount /etc/dnsmasq.d (see volume below)
+      # Pi-hole v6 ignores /etc/dnsmasq.d unless this flag is true
+      FTLCONF_misc_etc_dnsmasq_d: "true"
     volumes:
-      - ./pihole:/etc/dnsmasq.d
+      # Pi-hole state lives in named volumes (per-device)
       - pihole-etc:/etc/pihole
       - pihole-logs:/var/log
+      # If you keep custom dnsmasq snippets in the repo, mount them read-only.
+      # If you don't use any, delete this line and set FTLCONF_misc_etc_dnsmasq_d to "false".
+      - ./pihole:/etc/dnsmasq.d:ro
     cap_add:
       - NET_ADMIN
-    dns:                           # ensure startup even before upstream works
+    # Make container networking independent of upstream resolution at startup
+    dns:
       - 127.0.0.1
       - 1.1.1.1
     healthcheck:

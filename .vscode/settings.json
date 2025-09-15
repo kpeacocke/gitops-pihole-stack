@@ -3,6 +3,8 @@
         "curlimages",
         "dnsmasq",
         "FTLCONF",
+        "MAXDBDAYS",
+        "mvance",
         "PIHOLE",
         "WEBPASSWORD"
     ]

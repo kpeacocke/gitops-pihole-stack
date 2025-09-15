@@ -1,6 +1,52 @@
 ---
+version: "3.9"
+
+x-common-env: &common-env
+  TZ: "Australia/Sydney"
+  WEBPASSWORD: "${WEBPASSWORD}"           # set per-host in Portainer
+  DNSMASQ_LISTENING: "all"
+  FTLCONF_LOCAL_IPV4: "${HOST_IP}"        # set per-host in Portainer
+  FTLCONF_MAXDBDAYS: "7"                  # keep gravity DB small on Pi 3
+
 services:
-  hello:
-    image: alpine:3
-    command: ["sh","-c","sleep 600"]
+  unbound:
+    image: mvance/unbound:latest
+    container_name: unbound
+    network_mode: host
     restart: unless-stopped
+    volumes:
+      - ./unbound/unbound.conf:/opt/unbound/unbound.conf:ro
+      - ./unbound/root.hints:/opt/unbound/root.hints:ro
+    healthcheck:
+      test: ["CMD", "drill", "cloudflare.com", "@127.0.0.1", "-p", "5335"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      # Pi-hole sends all queries to THIS host's Unbound on 5335
+      PIHOLE_DNS_: "${HOST_IP}#5335"
+    volumes:
+      - ./pihole:/etc/dnsmasq.d
+      - pihole-etc:/etc/pihole
+      - pihole-logs:/var/log
+    cap_add:
+      - NET_ADMIN
+    dns:                           # ensure startup even before upstream works
+      - 127.0.0.1
+      - 1.1.1.1
+    healthcheck:
+      test: ["CMD", "dig", "+short", "pi.hole", "@127.0.0.1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pihole-etc:
+  pihole-logs:

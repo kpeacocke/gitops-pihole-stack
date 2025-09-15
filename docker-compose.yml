@@ -1,17 +1,20 @@
 ---
 services:
   unbound:
-    image: mvance/unbound:latest
-    platform: linux/arm/v7
+    image: mvance/unbound-rpi:latest
     network_mode: host
     restart: unless-stopped
     volumes:
-      - ./unbound/unbound.conf:/opt/unbound/unbound.conf:ro
-      - ./unbound/root.hints:/opt/unbound/root.hints:ro
+      - ./unbound/unbound.conf:/opt/unbound/etc/unbound/unbound.conf:ro
+      - ./unbound/root.hints:/opt/unbound/etc/unbound/root.hints:ro
+    healthcheck:
+      test: ["CMD", "drill", "cloudflare.com", "@127.0.0.1", "-p", "5335"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
 
   pihole:
     image: pihole/pihole:latest
-    platform: linux/arm/v7
     network_mode: host
     restart: unless-stopped
     environment:
@@ -35,7 +38,6 @@ services:
 
   nebula-sync:
     image: ghcr.io/lovelaze/nebula-sync:latest
-    platform: linux/arm/v7
     restart: unless-stopped
     profiles: ["nebula"]   # 👈 only runs if profile is active
     environment:

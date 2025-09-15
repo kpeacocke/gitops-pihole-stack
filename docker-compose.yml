@@ -2,6 +2,7 @@
 services:
   unbound:
     image: mvance/unbound:latest
+    platform: linux/arm/v7
     network_mode: host
     restart: unless-stopped
     volumes:
@@ -10,6 +11,7 @@ services:
 
   pihole:
     image: pihole/pihole:latest
+    platform: linux/arm/v7
     network_mode: host
     restart: unless-stopped
     environment:
@@ -33,6 +35,7 @@ services:
 
   nebula-sync:
     image: ghcr.io/lovelaze/nebula-sync:latest
+    platform: linux/arm/v7
     restart: unless-stopped
     profiles: ["nebula"]   # 👈 only runs if profile is active
     environment:

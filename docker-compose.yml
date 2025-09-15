@@ -15,7 +15,7 @@ services:
     environment:
       TZ: "Australia/Sydney"
       FTLCONF_webserver_api_password: "${ADMIN_PASSWORD}"
-      FTLCONF_dns_upstreams: "${HOST_IP}#5335"
+      FTLCONF_dns_upstreams: "127.0.0.1#5335"
       FTLCONF_dns_listeningMode: "all"
       FTLCONF_dns_reply_host_IPv4: "${HOST_IP}"
       FTLCONF_dns_reply_host_force4: "true"

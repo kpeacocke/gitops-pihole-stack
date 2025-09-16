@@ -8,6 +8,7 @@ services:
     restart: unless-stopped
     environment:
       TZ: "Australia/Sydney"
+    command: ["-d", "-c", "/etc/unbound/unbound.conf"] 
     volumes:
       - ./unbound/unbound.conf:/etc/unbound/unbound.conf:ro
       - ./unbound:/var/unbound

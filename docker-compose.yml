@@ -8,10 +8,11 @@ services:
     restart: unless-stopped
     environment:
       TZ: "Australia/Sydney"
-    command: ["-d", "-c", "/etc/unbound/unbound.conf"] 
+    command: ["-d", "-c", "/etc/unbound/unbound.conf"]
     volumes:
       - ./unbound/unbound.conf:/etc/unbound/unbound.conf:ro
-      - ./unbound:/var/unbound
+      - ./unbound/root.hints:/var/unbound/root.hints:ro
+      - ./unbound:/var/unbound/key
     healthcheck:
       test: ["CMD", "unbound-checkconf", "/etc/unbound/unbound.conf"]
       interval: 30s

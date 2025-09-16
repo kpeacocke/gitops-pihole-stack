@@ -2,13 +2,17 @@
 services:
   unbound:
     image: klutchell/unbound:latest
+    platform: linux/arm/v7
+    container_name: unbound
     network_mode: host
     restart: unless-stopped
+    environment:
+      TZ: "Australia/Sydney"
     volumes:
       - ./unbound/unbound.conf:/etc/unbound/unbound.conf:ro
-      - ./unbound/root.hints:/var/unbound/root.hints:ro
+      - ./unbound:/var/unbound
     healthcheck:
-      test: ["CMD-SHELL", "unbound-checkconf /etc/unbound/unbound.conf >/dev/null 2>&1 && nc -z 127.0.0.1 5335"]
+      test: ["CMD", "unbound-checkconf", "/etc/unbound/unbound.conf"]
       interval: 30s
       timeout: 5s
       retries: 5

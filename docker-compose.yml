@@ -53,6 +53,7 @@ services:
       FULL_SYNC: "true"
       RUN_GRAVITY: "true"
       CRON: "*/30 * * * *"
+      SYNC_CONFIG_DNS_EXCLUDE: "interface,reply.host.force4,reply.host.IPv4,reply.host.force6,reply.host.IPv6"
 
 volumes:
   pihole-etc:

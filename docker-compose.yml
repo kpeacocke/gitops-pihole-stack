@@ -12,7 +12,7 @@ services:
     volumes:
       - ./unbound/unbound.conf:/etc/unbound/unbound.conf:ro
       - ./unbound/root.hints:/var/unbound/root.hints:ro
-      - ./unbound:/var/unbound/key
+      - unbound:/var/unbound/key
     healthcheck:
       test: ["CMD", "unbound-checkconf", "/etc/unbound/unbound.conf"]
       interval: 30s
@@ -56,3 +56,4 @@ services:
 volumes:
   pihole-etc:
   pihole-logs:
+  unbound:

@@ -1,5 +1,8 @@
 ---
+# Docker Compose configuration for Pi-hole with Unbound DNS resolver
+# Ensure to create a .env file with required variables: ADMIN_PASSWORD, HOST_IP, REP_ADMIN_PASSWORD
 services:
+  # Unbound DNS resolver for improved privacy and performance
   unbound:
     image: klutchell/unbound:latest
     container_name: unbound
@@ -13,11 +16,17 @@ services:
       - ./unbound/root.hints:/var/unbound/root.hints:ro
       - unbound:/var/unbound/key
     healthcheck:
-      test: ["CMD", "unbound-checkconf", "/etc/unbound/unbound.conf"]
+      test: ["CMD", "dig", "@127.0.0.1", "-p", "5335", "google.com"]
       interval: 30s
       timeout: 5s
       retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
+  # Pi-hole ad blocker and DNS server
   pihole:
     image: pihole/pihole:latest
     container_name: pihole
@@ -30,8 +39,15 @@ services:
       FTLCONF_dns_listeningMode: "all"
       FTLCONF_dns_reply_host_IPv4: "${HOST_IP}"
       FTLCONF_dns_reply_host_force4: "true"
+      # Database and log management to prevent disk space issues
       FTLCONF_database_maxDBdays: "7"
+      FTLCONF_files_log_dnsmasq: "/var/log/pihole/pihole.log"
+      FTLCONF_files_log_ftl: "/var/log/pihole/FTL.log"
+      FTLCONF_files_log_webserver: "/var/log/pihole/webserver.log"
       FTLCONF_misc_etc_dnsmasq_d: "true"
+      # Rotate logs daily and keep only 3 days of compressed logs
+      DNSMASQ_LISTENING: "all"
+      PIHOLE_DNS_1: "127.0.0.1#5335"
     volumes:
       - pihole-etc:/etc/pihole
       - pihole-logs:/var/log
@@ -41,22 +57,34 @@ services:
     dns:
       - 127.0.0.1
       - 1.1.1.1
+    depends_on:
+      unbound:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/admin/api.php?status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
+  # Optional nebula-sync for syncing Pi-hole configurations across instances
   nebula-sync:
     image: ghcr.io/lovelaze/nebula-sync:latest
     container_name: nebula-sync
     restart: unless-stopped
-    profiles: ["nebula"]   # 👈 only runs if profile is active
+    profiles: ["nebula"]
     environment:
       PRIMARY: "http://192.168.5.52|${ADMIN_PASSWORD}"
       REPLICAS: "http://192.168.5.54|${REP_ADMIN_PASSWORD}"
       FULL_SYNC: "false"
       RUN_GRAVITY: "true"
       CRON: "*/15 * * * *"
-    # Giving additional time for slower devices
       CLIENT_RETRY_DELAY_SECONDS: 15
       CLIENT_TIMEOUT_SECONDS: 45
-    # Enabling selective syncs
       SYNC_GRAVITY_GROUP: true
       SYNC_GRAVITY_AD_LIST: true
       SYNC_GRAVITY_AD_LIST_BY_GROUP: true

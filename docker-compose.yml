@@ -16,7 +16,7 @@ services:
       - ./unbound/root.hints:/var/unbound/root.hints:ro
       - unbound:/var/unbound/key
     healthcheck:
-      test: ["CMD", "unbound-checkconf"]
+      test: ["CMD", "unbound-checkconf", "/etc/unbound/unbound.conf"]
       interval: 30s
       timeout: 10s
       retries: 5

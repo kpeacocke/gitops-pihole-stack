@@ -1,0 +1,126 @@
+---
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose.yml
+        run: |
+          docker-compose config --quiet
+
+      - name: Check for required files
+        run: |
+          test -f docker-compose.yml
+          test -f unbound/unbound.conf
+          test -f unbound/root.hints
+          test -f pihole/99-custom.conf
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create test .env file
+        run: |
+          cat << EOF > .env
+          ADMIN_PASSWORD=test_password
+          HOST_IP=127.0.0.1
+          REP_ADMIN_PASSWORD=test_password
+          EOF
+
+      - name: Start services
+        run: |
+          docker-compose up -d
+
+      - name: Wait for services to be healthy
+        run: |
+          timeout 120 bash -c 'until docker ps | grep -q "healthy"; do sleep 5; done' || true
+
+      - name: Check Unbound is running
+        run: |
+          docker ps | grep unbound
+          docker exec unbound unbound-checkconf
+
+      - name: Check Pi-hole is running
+        run: |
+          docker ps | grep pihole
+          docker exec pihole pgrep pihole-FTL
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose down -v
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Create release tag
+        id: tag
+        run: |
+          TAG="v$(date +'%Y.%m.%d')-${GITHUB_SHA::7}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Release tag: $TAG"
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          release_name: Release ${{ steps.tag.outputs.tag }}
+          body: |
+            Automated release for commit ${{ github.sha }}
+            
+            Changes:
+            - Updated Pi-hole stack configuration
+            
+            Deploy to your hosts using Portainer webhooks or manually pull the latest changes.
+          draft: false
+          prerelease: false
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: release
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    strategy:
+      matrix:
+        host: [terror, harmony]
+    steps:
+      - name: Trigger Portainer webhook for ${{ matrix.host }}
+        run: |
+          if [ "${{ matrix.host }}" = "terror" ]; then
+            WEBHOOK_URL="${{ secrets.PORTAINER_WEBHOOK_TERROR_URL }}"
+          else
+            WEBHOOK_URL="${{ secrets.PORTAINER_WEBHOOK_HARMONY_URL }}"
+          fi
+          
+          echo "Triggering deployment for ${{ matrix.host }}..."
+          curl -X POST "$WEBHOOK_URL"
+          echo "Deployment triggered for ${{ matrix.host }}"

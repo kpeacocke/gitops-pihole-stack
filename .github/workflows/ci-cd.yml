@@ -147,6 +147,24 @@ jobs:
             WEBHOOK_URL="${{ secrets.PORTAINER_WEBHOOK_HARMONY_URL }}"
           fi
           
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "ERROR: Webhook URL is empty for ${{ matrix.host }}"
+            exit 1
+          fi
+          
           echo "Triggering deployment for ${{ matrix.host }}..."
-          curl -X POST "$WEBHOOK_URL"
-          echo "Deployment triggered for ${{ matrix.host }}"
+          echo "Webhook URL: ${WEBHOOK_URL:0:50}..." # Show first 50 chars only
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WEBHOOK_URL")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          echo "HTTP Response Code: $HTTP_CODE"
+          echo "Response Body: $BODY"
+          
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✓ Deployment triggered successfully for ${{ matrix.host }}"
+          else
+            echo "✗ Failed to trigger deployment for ${{ matrix.host }}"
+            exit 1
+          fi

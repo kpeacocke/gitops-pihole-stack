@@ -19,7 +19,7 @@ jobs:
 
       - name: Validate docker-compose.yml
         run: |
-          docker-compose config --quiet
+          docker compose config --quiet
 
       - name: Check for required files
         run: |
@@ -46,7 +46,7 @@ jobs:
 
       - name: Start services
         run: |
-          docker-compose up -d
+          docker compose up -d
 
       - name: Wait for services to be healthy
         run: |
@@ -65,7 +65,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          docker-compose down -v
+          docker compose down -v
 
   release:
     name: Release

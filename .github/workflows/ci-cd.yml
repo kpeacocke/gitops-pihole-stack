@@ -48,8 +48,8 @@ jobs:
         run: |
           # Replace network_mode: host with bridge networking for CI
           sed -i 's/network_mode: host/# network_mode: host # Disabled for CI/g' docker-compose.yml
-          # Remove depends_on health condition for CI testing
-          sed -i '/condition: service_healthy/d' docker-compose.yml
+          # Remove entire depends_on block for CI testing
+          sed -i '/depends_on:/,/condition: service_healthy/d' docker-compose.yml
 
       - name: Start services
         run: |
